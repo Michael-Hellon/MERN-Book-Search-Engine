@@ -7,7 +7,6 @@ import { LOGIN_USER } from '../utils/mutations';
 import Auth from '../utils/auth';
 
 const LoginForm = () => {
-  // const [userFormData, setUserFormData] = useState({ email: '', password: '' });
   const [validated] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
 
@@ -40,11 +39,15 @@ const LoginForm = () => {
     });
   };
 
-
   return (
     <>
       <Form noValidate validated={validated} onSubmit={handleFormSubmit}>
-        <Alert dismissible onClose={() => setShowAlert(false)} show={showAlert} variant='danger'>
+      <Alert 
+          dismissible 
+          onClose={() => setShowAlert(false)} 
+          show={showAlert} 
+          variant='danger'
+        >
           Something went wrong with your login credentials!
         </Alert>
         <Form.Group className='mb-3'>
@@ -57,8 +60,11 @@ const LoginForm = () => {
             value={handleChange}
             required
           />
-          <Form.Control.Feedback type='invalid'>Email is required!</Form.Control.Feedback>
+          <Form.Control.Feedback type='invalid'>
+            Email is required!
+          </Form.Control.Feedback>
         </Form.Group>
+
         <Form.Group className='mb-3'>
           <Form.Label htmlFor='password'>Password</Form.Label>
           <Form.Control
@@ -74,11 +80,13 @@ const LoginForm = () => {
         <Button
           disabled={!(formState.email && formState.password)}
           type='submit'
-          variant='success'>
+          variant='success'
+        >
           Submit
         </Button>
       </Form>
     </>
   );
 };
+
 export default LoginForm;
