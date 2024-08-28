@@ -1,20 +1,18 @@
 import { useState, useEffect } from 'react';
+import { useMutation } from '@apollo/client';
 import {
-  HeaderDisplay,
   Container,
-  CardColumn,
   Col,
   Form,
   Button,
   Card,
+  Row
 } from 'react-bootstrap';
 
 import Auth from '../utils/auth';
 import { searchGoogleBooks } from '../utils/API';
 import { saveBookIds, getSavedBookIds } from '../utils/localStorage';
-import { useMutation } from '@apollo/client';
 import { SAVE_BOOK } from '../utils/mutations';
-import { GET_ME } from '../utils/queries';
 
 const SearchBooks = () => {
   // create state for holding returned google api data
@@ -25,30 +23,9 @@ const SearchBooks = () => {
   // create state to hold saved bookId values
   const [savedBookIds, setSavedBookIds] = useState(getSavedBookIds());
 
-  const [saveBook, { error }] = useMutation(SAVE_BOOK, {
-    // The below block ensures that as soon as the user saves a book, it appears right away in the saved books page
-    update(cache, { data: { saveBook } }) {
-      try {
-        const { me } = cache.readQuery({
-          query: GET_ME,
-        });
-
-        cache.writeQuery({
-          query: GET_ME,
-          data: {
-            me: {
-              ...me,
-              savedBooks: [
-                ...me.savedBooks,
-                saveBook.savedBooks[saveBook.savedBooks.length - 1],
-              ],
-            },
-          },
-        });
-      } catch (e) {}
-    },
-  });
-
+  const [saveBook, {error}] = useMutation(SAVE_BOOK);
+  // set up useEffect hook to save `savedBookIds` list to localStorage on component unmount
+  // learn more here: https://reactjs.org/docs/hooks-effect.html#effects-with-cleanup
   useEffect(() => {
     return () => saveBookIds(savedBookIds);
   });
@@ -72,7 +49,6 @@ const SearchBooks = () => {
 
       const bookData = items.map((book) => ({
         bookId: book.id,
-        link: book.volumeInfo.previewLink,
         authors: book.volumeInfo.authors || ['No author to display'],
         title: book.volumeInfo.title,
         description: book.volumeInfo.description,
@@ -91,7 +67,7 @@ const SearchBooks = () => {
     // find the book in `searchedBooks` state by the matching id
     const bookToSave = searchedBooks.find((book) => book.bookId === bookId);
 
-    // get tokens
+    // get token
     const token = Auth.loggedIn() ? Auth.getToken() : null;
 
     if (!token) {
@@ -99,46 +75,47 @@ const SearchBooks = () => {
     }
 
     try {
-      await saveBook({
-        variables: { bookToSave },
+      const { data } = await saveBook({
+        variable: {bookData: bookToSave}
       });
+
+      if (error) {
+        throw new Error('something went wrong!');
+      }
 
       // if book successfully saves to user's account, save book id to state
       setSavedBookIds([...savedBookIds, bookToSave.bookId]);
-      saveBookIds(savedBookIds);
     } catch (err) {
-      // console.log(error.networkError.result.errors);
-
       console.error(err);
     }
   };
 
   return (
     <>
-      <HeaderDisplay className="text-light bg-dark p-5">
+      <div className="text-light bg-dark p-5">
         <Container>
           <h1>Search for Books!</h1>
           <Form onSubmit={handleFormSubmit}>
-            <Form.Row>
+            <Row>
               <Col xs={12} md={8}>
                 <Form.Control
-                  name="searchInput"
+                  name='searchInput'
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  type="test"
-                  size="lg"
-                  placeholder="Search for a book"
+                  type='text'
+                  size='lg'
+                  placeholder='Search for a book'
                 />
               </Col>
               <Col xs={12} md={4}>
-                <Button type="submit" variant="success" size="lg">
+                <Button type='submit' variant='success' size='lg'>
                   Submit Search
                 </Button>
               </Col>
-            </Form.Row>
+            </Row>
           </Form>
         </Container>
-      </HeaderDisplay>
+      </div>
 
       <Container>
         <h2 className='pt-5'>
@@ -146,46 +123,37 @@ const SearchBooks = () => {
             ? `Viewing ${searchedBooks.length} results:`
             : 'Search for a book to begin'}
         </h2>
-        <CardColumn>
+        <Row>
           {searchedBooks.map((book) => {
             return (
-              <Card key={book.bookId} border="dark">
-                {book.image ? (
-                  <Card.Img
-                    src={book.image}
-                    alt={`The cover for ${book.title}`}
-                    variant="top"
-                  />
-                ) : null}
-
-                <Card.Body>
-                  <Card.Title>{book.title}</Card.Title>
-                  <p className="small">Authors: {book.authors}</p>
-                  <Card.Text>{book.description}</Card.Text>
-
-                  {Auth.loggedIn() && (
-                    <Button
-                      disabled={savedBookIds?.some(
-                        (savedBookId) => savedBookId === book.bookId
-                      )}
-                      className="btn-block btn-info"
-                      onClick={() => handleSaveBook(book.bookId)}
-                    >
-                      {savedBookIds?.some(
-                        (savedBookId) => savedBookId === book.bookId
-                      )
-                        ? 'This book has already been saved!'
-                        : 'Save this Book!'}
-                    </Button>
-                  )}
-
-                </Card.Body>
-              </Card>
+              <Col md="4" key={book.bookId}>
+                <Card border='dark'>
+                  {book.image ? (
+                    <Card.Img src={book.image} alt={`The cover for ${book.title}`} variant='top' />
+                  ) : null}
+                  <Card.Body>
+                    <Card.Title>{book.title}</Card.Title>
+                    <p className='small'>Authors: {book.authors}</p>
+                    <Card.Text>{book.description}</Card.Text>
+                    {Auth.loggedIn() && (
+                      <Button
+                        disabled={savedBookIds?.some((savedBookId) => savedBookId === book.bookId)}
+                        className='btn-block btn-info'
+                        onClick={() => handleSaveBook(book.bookId)}>
+                        {savedBookIds?.some((savedBookId) => savedBookId === book.bookId)
+                          ? 'This book has already been saved!'
+                          : 'Save this Book!'}
+                      </Button>
+                    )}
+                  </Card.Body>
+                </Card>
+              </Col>
             );
           })}
-        </CardColumn>
+        </Row>
       </Container>
     </>
   );
 };
+
 export default SearchBooks;
